@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Virtual Joystick Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 1.5rem;
+      }
+
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .demo-card {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      .demo-card h2 {
+        font-size: 1rem;
+        margin-bottom: 10px;
+        color: #4a90d9;
+      }
+
+      .demo-area {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 150px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+
+      .output {
+        font-family: monospace;
+        font-size: 0.8rem;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 4px;
+        min-height: 60px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      .buttons-row {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Virtual Joystick Demo</h1>
+
+    <div class="demo-grid">
+      <!-- Static Joystick - Modern -->
+      <div class="demo-card">
+        <h2>Static Joystick (Modern)</h2>
+        <div class="demo-area">
+          <virtual-joystick
+            id="joystick-static"
+            mode="static"
+            theme="modern"
+            size="120"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-static">Touch the joystick...</div>
+      </div>
+
+      <!-- Static Joystick - Pixel Art -->
+      <div class="demo-card">
+        <h2>Static Joystick (Pixel Art)</h2>
+        <div class="demo-area">
+          <virtual-joystick
+            id="joystick-pixel"
+            mode="static"
+            theme="pixel-art"
+            size="120"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-pixel">Touch the joystick...</div>
+      </div>
+
+      <!-- Locked Axes -->
+      <div class="demo-card">
+        <h2>Locked Y-Axis (Horizontal only)</h2>
+        <div class="demo-area">
+          <virtual-joystick
+            id="joystick-lockY"
+            mode="static"
+            lock-y
+            size="120"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-lockY">Horizontal movement only...</div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="demo-card">
+        <h2>Action Button</h2>
+        <div class="demo-area">
+          <div class="buttons-row">
+            <virtual-action-button
+              id="action-btn"
+              size="80"
+            ></virtual-action-button>
+            <virtual-action-button
+              id="action-btn-pixel"
+              theme="pixel-art"
+              size="80"
+            ></virtual-action-button>
+          </div>
+        </div>
+        <div class="output" id="output-action">Press a button...</div>
+      </div>
+
+      <!-- Charge Button -->
+      <div class="demo-card">
+        <h2>Charge Button</h2>
+        <div class="demo-area">
+          <div class="buttons-row">
+            <virtual-charge-button
+              id="charge-btn"
+              size="80"
+              charge-time="1000"
+              show-percentage
+            ></virtual-charge-button>
+            <virtual-charge-button
+              id="charge-btn-pixel"
+              theme="pixel-art"
+              size="80"
+              charge-time="800"
+            ></virtual-charge-button>
+          </div>
+        </div>
+        <div class="output" id="output-charge">Hold to charge...</div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { registerAll } from '../src/index.ts';
+
+      // Register all components
+      registerAll();
+
+      // Helper to format output
+      const fmt = (data) => JSON.stringify(data, null, 2);
+
+      // Static joystick events
+      const staticOut = document.getElementById('output-static');
+      document.getElementById('joystick-static').addEventListener('joystick-move', (e) => {
+        staticOut.textContent = `pos: (${e.detail.position.x.toFixed(2)}, ${e.detail.position.y.toFixed(2)})
+force: ${e.detail.force.toFixed(2)}
+dir: ${e.detail.direction.angle}`;
+      });
+
+      // Pixel joystick events
+      const pixelOut = document.getElementById('output-pixel');
+      document.getElementById('joystick-pixel').addEventListener('joystick-move', (e) => {
+        pixelOut.textContent = `pos: (${e.detail.position.x.toFixed(2)}, ${e.detail.position.y.toFixed(2)})
+force: ${e.detail.force.toFixed(2)}
+dir: ${e.detail.direction.angle}`;
+      });
+
+      // Locked Y events
+      const lockYOut = document.getElementById('output-lockY');
+      document.getElementById('joystick-lockY').addEventListener('joystick-move', (e) => {
+        lockYOut.textContent = `x: ${e.detail.position.x.toFixed(2)}
+y: ${e.detail.position.y.toFixed(2)} (locked)
+dir: ${e.detail.direction.x}`;
+      });
+
+      // Action button events
+      const actionOut = document.getElementById('output-action');
+      ['action-btn', 'action-btn-pixel'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.addEventListener('button-press', () => {
+          actionOut.textContent = `${id}: PRESSED`;
+        });
+        btn.addEventListener('button-release', (e) => {
+          actionOut.textContent = `${id}: released
+duration: ${e.detail.duration.toFixed(0)}ms`;
+        });
+      });
+
+      // Charge button events
+      const chargeOut = document.getElementById('output-charge');
+      ['charge-btn', 'charge-btn-pixel'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.addEventListener('charge-update', (e) => {
+          chargeOut.textContent = `${id}: charging
+percent: ${e.detail.percent.toFixed(0)}%`;
+        });
+        btn.addEventListener('charge-release', (e) => {
+          chargeOut.textContent = `${id}: RELEASED!
+final: ${e.detail.percent.toFixed(0)}%
+activated: ${e.detail.activated}`;
+        });
+      });
+    </script>
+  </body>
+</html>
