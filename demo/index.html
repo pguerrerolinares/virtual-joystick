@@ -17,17 +17,25 @@
         color: white;
         min-height: 100vh;
         padding: 20px;
+        padding-bottom: 100px;
       }
 
       h1 {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         font-size: 1.5rem;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
       }
 
       .demo-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         gap: 20px;
         max-width: 1200px;
         margin: 0 auto;
@@ -41,8 +49,14 @@
 
       .demo-card h2 {
         font-size: 1rem;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         color: #4a90d9;
+      }
+
+      .demo-card .description {
+        font-size: 0.8rem;
+        color: #888;
+        margin-bottom: 10px;
       }
 
       .demo-area {
@@ -53,15 +67,27 @@
         background: rgba(0, 0, 0, 0.2);
         border-radius: 8px;
         margin-bottom: 10px;
+        position: relative;
+      }
+
+      /* Touch area for dynamic/semi modes */
+      .touch-area {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 0.8rem;
       }
 
       .output {
         font-family: monospace;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         background: rgba(0, 0, 0, 0.3);
         padding: 10px;
         border-radius: 4px;
-        min-height: 60px;
+        min-height: 50px;
         white-space: pre-wrap;
         word-break: break-all;
       }
@@ -71,15 +97,24 @@
         gap: 20px;
         justify-content: center;
       }
+
+      /* Dynamic/semi joystick host needs to fill area */
+      .demo-area virtual-joystick[mode="dynamic"],
+      .demo-area virtual-joystick[mode="semi"] {
+        position: absolute;
+        inset: 0;
+      }
     </style>
   </head>
   <body>
     <h1>Virtual Joystick Demo</h1>
+    <p class="subtitle">Touch controls for mobile games - Web Components</p>
 
     <div class="demo-grid">
       <!-- Static Joystick - Modern -->
       <div class="demo-card">
-        <h2>Static Joystick (Modern)</h2>
+        <h2>Static Mode (Modern)</h2>
+        <p class="description">Fixed position, always visible</p>
         <div class="demo-area">
           <virtual-joystick
             id="joystick-static"
@@ -93,7 +128,8 @@
 
       <!-- Static Joystick - Pixel Art -->
       <div class="demo-card">
-        <h2>Static Joystick (Pixel Art)</h2>
+        <h2>Static Mode (Pixel Art)</h2>
+        <p class="description">Retro pixel art theme</p>
         <div class="demo-area">
           <virtual-joystick
             id="joystick-pixel"
@@ -105,9 +141,41 @@
         <div class="output" id="output-pixel">Touch the joystick...</div>
       </div>
 
+      <!-- Dynamic Mode -->
+      <div class="demo-card">
+        <h2>Dynamic Mode</h2>
+        <p class="description">Appears where you touch</p>
+        <div class="demo-area">
+          <div class="touch-area">Touch anywhere in this area</div>
+          <virtual-joystick
+            id="joystick-dynamic"
+            mode="dynamic"
+            size="100"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-dynamic">Touch to create joystick...</div>
+      </div>
+
+      <!-- Semi Mode -->
+      <div class="demo-card">
+        <h2>Semi Mode</h2>
+        <p class="description">Catch within 50px or create new</p>
+        <div class="demo-area">
+          <div class="touch-area">Touch to create, touch near to catch</div>
+          <virtual-joystick
+            id="joystick-semi"
+            mode="semi"
+            catch-distance="50"
+            size="100"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-semi">Touch to initialize...</div>
+      </div>
+
       <!-- Locked Axes -->
       <div class="demo-card">
-        <h2>Locked Y-Axis (Horizontal only)</h2>
+        <h2>Locked Y-Axis</h2>
+        <p class="description">Horizontal movement only</p>
         <div class="demo-area">
           <virtual-joystick
             id="joystick-lockY"
@@ -116,22 +184,38 @@
             size="120"
           ></virtual-joystick>
         </div>
-        <div class="output" id="output-lockY">Horizontal movement only...</div>
+        <div class="output" id="output-lockY">Horizontal only...</div>
+      </div>
+
+      <!-- Square Shape -->
+      <div class="demo-card">
+        <h2>Square Shape</h2>
+        <p class="description">Square boundary clamping</p>
+        <div class="demo-area">
+          <virtual-joystick
+            id="joystick-square"
+            mode="static"
+            shape="square"
+            size="120"
+          ></virtual-joystick>
+        </div>
+        <div class="output" id="output-square">Square clamping...</div>
       </div>
 
       <!-- Action Button -->
       <div class="demo-card">
-        <h2>Action Button</h2>
+        <h2>Action Buttons</h2>
+        <p class="description">Simple press and release</p>
         <div class="demo-area">
           <div class="buttons-row">
             <virtual-action-button
               id="action-btn"
-              size="80"
+              size="70"
             ></virtual-action-button>
             <virtual-action-button
               id="action-btn-pixel"
               theme="pixel-art"
-              size="80"
+              size="70"
             ></virtual-action-button>
           </div>
         </div>
@@ -140,19 +224,20 @@
 
       <!-- Charge Button -->
       <div class="demo-card">
-        <h2>Charge Button</h2>
+        <h2>Charge Buttons</h2>
+        <p class="description">Hold to charge, release to activate</p>
         <div class="demo-area">
           <div class="buttons-row">
             <virtual-charge-button
               id="charge-btn"
-              size="80"
+              size="70"
               charge-time="1000"
               show-percentage
             ></virtual-charge-button>
             <virtual-charge-button
               id="charge-btn-pixel"
               theme="pixel-art"
-              size="80"
+              size="70"
               charge-time="800"
             ></virtual-charge-button>
           </div>
@@ -167,31 +252,72 @@
       // Register all components
       registerAll();
 
-      // Helper to format output
-      const fmt = (data) => JSON.stringify(data, null, 2);
+      // Helper to format position
+      const fmtPos = (p) => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`;
 
-      // Static joystick events
+      // Static joystick
       const staticOut = document.getElementById('output-static');
       document.getElementById('joystick-static').addEventListener('joystick-move', (e) => {
-        staticOut.textContent = `pos: (${e.detail.position.x.toFixed(2)}, ${e.detail.position.y.toFixed(2)})
-force: ${e.detail.force.toFixed(2)}
-dir: ${e.detail.direction.angle}`;
+        const d = e.detail;
+        staticOut.textContent = `pos: ${fmtPos(d.position)}
+force: ${d.force.toFixed(2)}
+dir: ${d.direction.angle}`;
       });
 
-      // Pixel joystick events
+      // Pixel joystick
       const pixelOut = document.getElementById('output-pixel');
       document.getElementById('joystick-pixel').addEventListener('joystick-move', (e) => {
-        pixelOut.textContent = `pos: (${e.detail.position.x.toFixed(2)}, ${e.detail.position.y.toFixed(2)})
-force: ${e.detail.force.toFixed(2)}
-dir: ${e.detail.direction.angle}`;
+        const d = e.detail;
+        pixelOut.textContent = `pos: ${fmtPos(d.position)}
+force: ${d.force.toFixed(2)}
+dir: ${d.direction.angle}`;
+      });
+
+      // Dynamic joystick
+      const dynamicOut = document.getElementById('output-dynamic');
+      const dynamicJoy = document.getElementById('joystick-dynamic');
+      dynamicJoy.addEventListener('joystick-start', () => {
+        dynamicOut.textContent = 'Joystick created!';
+      });
+      dynamicJoy.addEventListener('joystick-move', (e) => {
+        const d = e.detail;
+        dynamicOut.textContent = `pos: ${fmtPos(d.position)}
+force: ${d.force.toFixed(2)}`;
+      });
+      dynamicJoy.addEventListener('joystick-end', () => {
+        dynamicOut.textContent = 'Joystick released';
+      });
+
+      // Semi joystick
+      const semiOut = document.getElementById('output-semi');
+      const semiJoy = document.getElementById('joystick-semi');
+      semiJoy.addEventListener('joystick-start', () => {
+        semiOut.textContent = 'Touch started!';
+      });
+      semiJoy.addEventListener('joystick-move', (e) => {
+        const d = e.detail;
+        semiOut.textContent = `pos: ${fmtPos(d.position)}
+force: ${d.force.toFixed(2)}`;
+      });
+      semiJoy.addEventListener('joystick-end', () => {
+        semiOut.textContent = 'Released (position saved)';
       });
 
       // Locked Y events
       const lockYOut = document.getElementById('output-lockY');
       document.getElementById('joystick-lockY').addEventListener('joystick-move', (e) => {
-        lockYOut.textContent = `x: ${e.detail.position.x.toFixed(2)}
-y: ${e.detail.position.y.toFixed(2)} (locked)
-dir: ${e.detail.direction.x}`;
+        const d = e.detail;
+        lockYOut.textContent = `x: ${d.position.x.toFixed(2)}
+y: ${d.position.y.toFixed(2)} (locked)
+dir: ${d.direction.x}`;
+      });
+
+      // Square shape
+      const squareOut = document.getElementById('output-square');
+      document.getElementById('joystick-square').addEventListener('joystick-move', (e) => {
+        const d = e.detail;
+        squareOut.textContent = `pos: ${fmtPos(d.position)}
+raw: ${fmtPos(d.rawPosition)}`;
       });
 
       // Action button events

@@ -2,6 +2,8 @@
  * Charge button component styles using Constructable Stylesheet.
  */
 
+import { PIXEL_BUTTON_GREEN_SVG } from '../../themes/sprites';
+
 export const styles = new CSSStyleSheet();
 
 styles.replaceSync(`
@@ -9,6 +11,10 @@ styles.replaceSync(`
     display: inline-block;
     --vcb-size: 64px;
     --vcb-color: #27ae60;
+    --vcb-bg: linear-gradient(135deg, var(--vcb-color) 0%, color-mix(in srgb, var(--vcb-color), black 20%) 100%);
+    --vcb-border: 2px solid rgba(255, 255, 255, 0.4);
+    --vcb-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --vcb-radius: 50%;
     --vcb-ring-width: 4px;
     --vcb-ring-track: rgba(255, 255, 255, 0.2);
 
@@ -31,10 +37,10 @@ styles.replaceSync(`
   .button {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--vcb-color) 0%, color-mix(in srgb, var(--vcb-color), black 20%) 100%);
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border-radius: var(--vcb-radius);
+    background: var(--vcb-bg);
+    border: var(--vcb-border);
+    box-shadow: var(--vcb-shadow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -59,7 +65,7 @@ styles.replaceSync(`
   /* Charge ring SVG */
   .ring-container {
     position: absolute;
-    inset: calc(var(--vcb-ring-width) * -0.5);
+    inset: calc(var(--ring-offset, 6px) * -1);
     pointer-events: none;
   }
 
@@ -102,13 +108,20 @@ styles.replaceSync(`
     pointer-events: none;
   }
 
-  /* Theme: pixel-art */
+  /* ========================
+     Theme: Pixel Art
+     ======================== */
   :host([theme="pixel-art"]) .button {
+    background: url('${PIXEL_BUTTON_GREEN_SVG}') center/contain no-repeat;
+    border: none;
+    box-shadow: none;
     border-radius: 0;
-    background: #6a9c6a;
-    border: 4px solid #7aac7a;
-    box-shadow: 4px 4px 0 #5a8c5a;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  :host([theme="pixel-art"]) .button.pressed {
+    transform: translate(2px, 2px) scale(0.95);
   }
 
   :host([theme="pixel-art"]) .ring-progress,
@@ -117,14 +130,26 @@ styles.replaceSync(`
   }
 
   :host([theme="pixel-art"]) .ring-track {
-    stroke: rgba(58, 58, 92, 0.5);
+    stroke: rgba(42, 42, 76, 0.5);
   }
 
-  /* Theme: custom */
+  :host([theme="pixel-art"]) .ring-progress {
+    stroke-linecap: square;
+  }
+
+  :host([theme="pixel-art"]) .percent {
+    font-family: monospace;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* ========================
+     Theme: Custom
+     ======================== */
   :host([theme="custom"]) .button {
-    background: none;
-    border: none;
-    box-shadow: none;
+    background: var(--vcb-bg, none);
+    border: var(--vcb-border, none);
+    box-shadow: var(--vcb-shadow, none);
+    border-radius: var(--vcb-radius, 50%);
   }
 
   :host([theme="custom"]) .ring-track,

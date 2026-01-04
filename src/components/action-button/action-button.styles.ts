@@ -2,6 +2,8 @@
  * Action button component styles using Constructable Stylesheet.
  */
 
+import { PIXEL_BUTTON_RED_SVG } from '../../themes/sprites';
+
 export const styles = new CSSStyleSheet();
 
 styles.replaceSync(`
@@ -9,6 +11,10 @@ styles.replaceSync(`
     display: inline-block;
     --vab-size: 64px;
     --vab-color: #e74c3c;
+    --vab-bg: linear-gradient(135deg, var(--vab-color) 0%, color-mix(in srgb, var(--vab-color), black 20%) 100%);
+    --vab-border: 2px solid rgba(255, 255, 255, 0.4);
+    --vab-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --vab-radius: 50%;
 
     touch-action: none;
     user-select: none;
@@ -23,10 +29,10 @@ styles.replaceSync(`
   .button {
     width: var(--vab-size);
     height: var(--vab-size);
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--vab-color) 0%, color-mix(in srgb, var(--vab-color), black 20%) 100%);
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border-radius: var(--vab-radius);
+    background: var(--vab-bg);
+    border: var(--vab-border);
+    box-shadow: var(--vab-shadow);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -52,25 +58,31 @@ styles.replaceSync(`
     pointer-events: none;
   }
 
-  /* Theme: pixel-art */
+  /* ========================
+     Theme: Pixel Art
+     ======================== */
   :host([theme="pixel-art"]) .button {
+    background: url('${PIXEL_BUTTON_RED_SVG}') center/contain no-repeat;
+    border: none;
+    box-shadow: none;
     border-radius: 0;
-    background: #8c5a5a;
-    border: 4px solid #9c6a6a;
-    box-shadow: 4px 4px 0 #7c4a4a;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
 
   :host([theme="pixel-art"]) .button:active,
   :host([theme="pixel-art"]) .button.pressed {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 #7c4a4a;
+    transform: translate(2px, 2px) scale(0.95);
+    box-shadow: none;
   }
 
-  /* Theme: custom */
+  /* ========================
+     Theme: Custom
+     ======================== */
   :host([theme="custom"]) .button {
-    background: none;
-    border: none;
-    box-shadow: none;
+    background: var(--vab-bg, none);
+    border: var(--vab-border, none);
+    box-shadow: var(--vab-shadow, none);
+    border-radius: var(--vab-radius, 50%);
   }
 `);

@@ -14,6 +14,10 @@ import type {
   ActionButtonReleaseData,
 } from './action-button.types';
 
+/** Feature detection */
+const supportsPointer =
+  typeof window !== 'undefined' && 'PointerEvent' in window;
+
 export class VirtualActionButtonElement extends HTMLElement {
   static tagName = 'virtual-action-button';
 
@@ -25,10 +29,14 @@ export class VirtualActionButtonElement extends HTMLElement {
 
   #button: HTMLDivElement | null = null;
   #pressStartTime: number | null = null;
-  #activeTouch: number | null = null;
+  #activeInput: number | null = null;
 
+  readonly #boundPointerDown = this.#handlePointerDown.bind(this);
+  readonly #boundPointerUp = this.#handlePointerUp.bind(this);
   readonly #boundTouchStart = this.#handleTouchStart.bind(this);
   readonly #boundTouchEnd = this.#handleTouchEnd.bind(this);
+  readonly #boundMouseDown = this.#handleMouseDown.bind(this);
+  readonly #boundMouseUp = this.#handleMouseUp.bind(this);
 
   constructor() {
     super();
@@ -110,17 +118,65 @@ export class VirtualActionButtonElement extends HTMLElement {
   // =====================
 
   #setupEventListeners(): void {
-    this.addEventListener('touchstart', this.#boundTouchStart, {
-      passive: false,
-    });
-    this.addEventListener('touchend', this.#boundTouchEnd);
-    this.addEventListener('touchcancel', this.#boundTouchEnd);
+    if (supportsPointer) {
+      // Pointer Events (handles touch + mouse + pen)
+      this.addEventListener('pointerdown', this.#boundPointerDown);
+      document.addEventListener('pointerup', this.#boundPointerUp);
+      document.addEventListener('pointercancel', this.#boundPointerUp);
+    } else {
+      // Fallback: Touch + Mouse events
+      this.addEventListener('touchstart', this.#boundTouchStart, {
+        passive: false,
+      });
+      this.addEventListener('touchend', this.#boundTouchEnd);
+      this.addEventListener('touchcancel', this.#boundTouchEnd);
+
+      // Mouse events for desktop
+      this.addEventListener('mousedown', this.#boundMouseDown);
+      document.addEventListener('mouseup', this.#boundMouseUp);
+    }
   }
 
   #cleanup(): void {
+    // Remove Pointer events
+    this.removeEventListener('pointerdown', this.#boundPointerDown);
+    document.removeEventListener('pointerup', this.#boundPointerUp);
+    document.removeEventListener('pointercancel', this.#boundPointerUp);
+
+    // Remove Touch events
     this.removeEventListener('touchstart', this.#boundTouchStart);
     this.removeEventListener('touchend', this.#boundTouchEnd);
     this.removeEventListener('touchcancel', this.#boundTouchEnd);
+
+    // Remove Mouse events
+    this.removeEventListener('mousedown', this.#boundMouseDown);
+    document.removeEventListener('mouseup', this.#boundMouseUp);
+  }
+
+  // =====================
+  // Pointer Handlers
+  // =====================
+
+  #handlePointerDown(event: PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.#activeInput !== null) return;
+
+    this.#activeInput = event.pointerId;
+    this.#pressStartTime = performance.now();
+
+    this.#button?.classList.add('pressed');
+
+    this.#emitEvent<ActionButtonPressData>('button-press', {
+      timestamp: this.#pressStartTime,
+    });
+  }
+
+  #handlePointerUp(event: PointerEvent): void {
+    if (event.pointerId !== this.#activeInput) return;
+
+    this.#release();
   }
 
   // =====================
@@ -131,12 +187,12 @@ export class VirtualActionButtonElement extends HTMLElement {
     event.preventDefault();
     event.stopPropagation();
 
-    if (this.#activeTouch !== null) return;
+    if (this.#activeInput !== null) return;
 
     const touch = event.changedTouches[0];
     if (!touch) return;
 
-    this.#activeTouch = touch.identifier;
+    this.#activeInput = touch.identifier;
     this.#pressStartTime = performance.now();
 
     this.#button?.classList.add('pressed');
@@ -149,24 +205,58 @@ export class VirtualActionButtonElement extends HTMLElement {
   #handleTouchEnd(event: TouchEvent): void {
     // Find the touch that ended
     for (const touch of Array.from(event.changedTouches)) {
-      if (touch.identifier === this.#activeTouch) {
-        const endTime = performance.now();
-        const duration = this.#pressStartTime
-          ? endTime - this.#pressStartTime
-          : 0;
-
-        this.#button?.classList.remove('pressed');
-
-        this.#emitEvent<ActionButtonReleaseData>('button-release', {
-          timestamp: endTime,
-          duration,
-        });
-
-        this.#activeTouch = null;
-        this.#pressStartTime = null;
+      if (touch.identifier === this.#activeInput) {
+        this.#release();
         break;
       }
     }
+  }
+
+  // =====================
+  // Mouse Handlers
+  // =====================
+
+  #handleMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (this.#activeInput !== null) return;
+
+    this.#activeInput = 0; // Mouse always uses identifier 0
+    this.#pressStartTime = performance.now();
+
+    this.#button?.classList.add('pressed');
+
+    this.#emitEvent<ActionButtonPressData>('button-press', {
+      timestamp: this.#pressStartTime,
+    });
+  }
+
+  #handleMouseUp(_event: MouseEvent): void {
+    if (this.#activeInput !== 0) return;
+
+    this.#release();
+  }
+
+  // =====================
+  // Release Helper
+  // =====================
+
+  #release(): void {
+    const endTime = performance.now();
+    const duration = this.#pressStartTime
+      ? endTime - this.#pressStartTime
+      : 0;
+
+    this.#button?.classList.remove('pressed');
+
+    this.#emitEvent<ActionButtonReleaseData>('button-release', {
+      timestamp: endTime,
+      duration,
+    });
+
+    this.#activeInput = null;
+    this.#pressStartTime = null;
   }
 
   // =====================

@@ -37,11 +37,26 @@ export {
   normalizeVector,
   getDirection,
 } from './core/math-utils';
+export {
+  createEvent,
+  createTypedEmitter,
+  addTypedListener,
+  type DefineEvents,
+  type EventOptions,
+} from './core/event-emitter';
 
 // Themes
 export type { Theme, ThemeConfig } from './themes/theme.interface';
-export { modernTheme } from './themes/modern.theme';
-export { pixelArtTheme } from './themes/pixel-art.theme';
+export { modernTheme, modernThemeConfig } from './themes/modern.theme';
+export { pixelArtTheme, pixelArtThemeConfig, pixelArtCSS } from './themes/pixel-art.theme';
+export {
+  PIXEL_PAD_SVG,
+  PIXEL_PAD_SIMPLE_SVG,
+  PIXEL_NUB_SVG,
+  PIXEL_NUB_SIMPLE_SVG,
+  PIXEL_BUTTON_RED_SVG,
+  PIXEL_BUTTON_GREEN_SVG,
+} from './themes/sprites';
 
 // Registration helper
 export function registerAll(): void {

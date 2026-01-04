@@ -20,13 +20,14 @@ import type {
   JoystickStartData,
   JoystickEndData,
 } from './joystick.types';
-import { TouchManager, type TouchData } from '../../core/touch-manager';
+import { InputManager, type InputData } from '../../core/input-manager';
 import {
   clampToCircle,
   clampToSquare,
   calculateAngle,
   normalizeVector,
   getDirection,
+  distance,
   type Point,
 } from '../../core/math-utils';
 
@@ -50,21 +51,24 @@ export class VirtualJoystickElement extends HTMLElement {
   }
 
   readonly #shadow: ShadowRoot;
-  readonly #touchManager = new TouchManager();
+  readonly #inputManager = new InputManager();
 
   #container: HTMLDivElement | null = null;
   #nub: HTMLDivElement | null = null;
 
   // State
-  #activeTouch: number | null = null;
+  #activeInput: number | null = null;
   #center: Point = { x: 0, y: 0 };
+  #semiModeBasePosition: Point | null = null; // Base position for semi mode
   #animationFrameId: number | null = null;
   #pendingMoveData: JoystickMoveData | null = null;
 
   // Bound handlers for cleanup
+  readonly #boundPointerDown = this.#handlePointerDown.bind(this);
   readonly #boundTouchStart = this.#handleTouchStart.bind(this);
   readonly #boundTouchMove = this.#handleTouchMove.bind(this);
   readonly #boundTouchEnd = this.#handleTouchEnd.bind(this);
+  readonly #boundMouseDown = this.#handleMouseDown.bind(this);
   readonly #boundVisibilityChange = this.#handleVisibilityChange.bind(this);
 
   constructor() {
@@ -72,11 +76,11 @@ export class VirtualJoystickElement extends HTMLElement {
     this.#shadow = this.attachShadow({ mode: 'open' });
     this.#shadow.adoptedStyleSheets = [styles];
 
-    // Setup touch manager callbacks
-    this.#touchManager
-      .onStart((touch) => this.#onTouchStart(touch))
-      .onMove((touch) => this.#onTouchMove(touch))
-      .onEnd((touch) => this.#onTouchEnd(touch));
+    // Setup input manager callbacks
+    this.#inputManager
+      .onStart((input) => this.#onInputStart(input))
+      .onMove((input) => this.#onInputMove(input))
+      .onEnd((input) => this.#onInputEnd(input));
   }
 
   // =====================
@@ -214,23 +218,38 @@ export class VirtualJoystickElement extends HTMLElement {
   // =====================
 
   #setupEventListeners(): void {
-    // Use the element itself as touch target for all modes
-    this.addEventListener('touchstart', this.#boundTouchStart, {
-      passive: false,
-    });
-    this.addEventListener('touchmove', this.#boundTouchMove, { passive: false });
-    this.addEventListener('touchend', this.#boundTouchEnd);
-    this.addEventListener('touchcancel', this.#boundTouchEnd);
+    // Use Pointer Events if available (handles touch + mouse + pen)
+    if (InputManager.supportsPointer) {
+      this.addEventListener('pointerdown', this.#boundPointerDown);
+    } else {
+      // Fallback: Touch + Mouse events
+      this.addEventListener('touchstart', this.#boundTouchStart, {
+        passive: false,
+      });
+      this.addEventListener('touchmove', this.#boundTouchMove, { passive: false });
+      this.addEventListener('touchend', this.#boundTouchEnd);
+      this.addEventListener('touchcancel', this.#boundTouchEnd);
+
+      // Mouse events for desktop
+      this.addEventListener('mousedown', this.#boundMouseDown);
+    }
 
     // Handle visibility change (app switch, tab change)
     document.addEventListener('visibilitychange', this.#boundVisibilityChange);
   }
 
   #cleanup(): void {
+    // Remove Pointer events
+    this.removeEventListener('pointerdown', this.#boundPointerDown);
+
+    // Remove Touch events
     this.removeEventListener('touchstart', this.#boundTouchStart);
     this.removeEventListener('touchmove', this.#boundTouchMove);
     this.removeEventListener('touchend', this.#boundTouchEnd);
     this.removeEventListener('touchcancel', this.#boundTouchEnd);
+
+    // Remove Mouse events
+    this.removeEventListener('mousedown', this.#boundMouseDown);
 
     document.removeEventListener(
       'visibilitychange',
@@ -242,79 +261,139 @@ export class VirtualJoystickElement extends HTMLElement {
       this.#animationFrameId = null;
     }
 
-    this.#touchManager.destroy();
+    this.#inputManager.destroy();
   }
 
   // =====================
-  // Touch Handlers
+  // Event Handlers
   // =====================
+
+  #handlePointerDown(event: PointerEvent): void {
+    event.preventDefault(); // Prevent default behaviors
+    event.stopPropagation();
+    this.#inputManager.handlePointerDown(event);
+  }
 
   #handleTouchStart(event: TouchEvent): void {
     event.preventDefault(); // Prevent iOS zoom (#185)
     event.stopPropagation();
-    this.#touchManager.handleTouchStart(event);
+    this.#inputManager.handleTouchStart(event);
   }
 
   #handleTouchMove(event: TouchEvent): void {
     event.preventDefault();
-    this.#touchManager.handleTouchMove(event);
+    this.#inputManager.handleTouchMove(event);
   }
 
   #handleTouchEnd(event: TouchEvent): void {
     // NOTE: No preventDefault here - Firefox Android fix (#231, #189)
-    this.#touchManager.handleTouchEnd(event);
+    this.#inputManager.handleTouchEnd(event);
+  }
+
+  #handleMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.#inputManager.handleMouseDown(event);
   }
 
   #handleVisibilityChange(): void {
     if (document.hidden) {
-      this.#touchManager.releaseAll();
+      this.#inputManager.releaseAll();
     }
   }
 
   // =====================
-  // Touch Manager Callbacks
+  // Input Manager Callbacks
   // =====================
 
-  #onTouchStart(touch: TouchData): void {
-    // Only track one touch at a time for this joystick
-    if (this.#activeTouch !== null) return;
+  #onInputStart(input: InputData): void {
+    // Only track one input at a time for this joystick
+    if (this.#activeInput !== null) return;
 
-    this.#activeTouch = touch.identifier;
+    const inputPoint = { x: input.startX, y: input.startY };
 
     // Calculate center based on mode
-    if (this.mode === 'static' && this.#container) {
-      const rect = this.#container.getBoundingClientRect();
-      this.#center = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    } else {
-      // Dynamic/semi: center is where touch started
-      this.#center = { x: touch.startX, y: touch.startY };
+    switch (this.mode) {
+      case 'static':
+        // Static mode: use fixed container position
+        if (this.#container) {
+          const rect = this.#container.getBoundingClientRect();
+          this.#center = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+        }
+        break;
 
-      // Position container at touch location
-      if (this.#container && this.mode === 'dynamic') {
-        this.#container.style.left = `${touch.startX - this.size / 2}px`;
-        this.#container.style.top = `${touch.startY - this.size / 2}px`;
-      }
+      case 'semi':
+        // Semi mode: catch existing joystick if within catchDistance
+        // Compare against the CURRENT container center, not the stored base position
+        if (this.#container) {
+          const containerRect = this.#container.getBoundingClientRect();
+          const containerCenter = {
+            x: containerRect.left + containerRect.width / 2,
+            y: containerRect.top + containerRect.height / 2,
+          };
+
+          if (this.#semiModeBasePosition) {
+            // Joystick already exists - check if we can catch it
+            const dist = distance(inputPoint, containerCenter);
+            if (dist <= this.catchDistance) {
+              // Catch: use the container's current center
+              this.#center = containerCenter;
+            } else {
+              // Too far: move joystick to input location
+              this.#center = inputPoint;
+              this.#semiModeBasePosition = { ...inputPoint };
+              this.#positionContainerAt(inputPoint);
+            }
+          } else {
+            // First input: initialize at input location
+            this.#center = inputPoint;
+            this.#semiModeBasePosition = { ...inputPoint };
+            this.#positionContainerAt(inputPoint);
+          }
+        } else {
+          // Container not yet rendered, use input location
+          this.#center = inputPoint;
+          this.#semiModeBasePosition = { ...inputPoint };
+        }
+        break;
+
+      case 'dynamic':
+      default:
+        // Dynamic mode: always create joystick at input location
+        this.#center = inputPoint;
+        this.#positionContainerAt(inputPoint);
+        break;
     }
 
+    this.#activeInput = input.identifier;
     this.#container?.classList.add('active');
 
     // Emit start event
     this.#emitEvent<JoystickStartData>('joystick-start', {
-      identifier: touch.identifier,
-      position: { x: touch.startX, y: touch.startY },
+      identifier: input.identifier,
+      position: inputPoint,
       timestamp: performance.now(),
     });
   }
 
-  #onTouchMove(touch: TouchData): void {
-    if (touch.identifier !== this.#activeTouch) return;
+  /**
+   * Position the container centered at a given point.
+   */
+  #positionContainerAt(point: Point): void {
+    if (!this.#container) return;
+    this.#container.style.left = `${point.x - this.size / 2}px`;
+    this.#container.style.top = `${point.y - this.size / 2}px`;
+  }
+
+  #onInputMove(input: InputData): void {
+    if (input.identifier !== this.#activeInput) return;
 
     // Calculate position relative to center
-    let deltaX = touch.currentX - this.#center.x;
-    let deltaY = touch.currentY - this.#center.y;
+    let deltaX = input.currentX - this.#center.x;
+    let deltaY = input.currentY - this.#center.y;
 
     // Apply axis locks
     if (this.lockX) deltaX = 0;
@@ -344,7 +423,7 @@ export class VirtualJoystickElement extends HTMLElement {
 
     // Create move data
     const moveData: JoystickMoveData = {
-      identifier: touch.identifier,
+      identifier: input.identifier,
       position: {
         x: clamped.x / radius,
         y: clamped.y / radius,
@@ -372,10 +451,10 @@ export class VirtualJoystickElement extends HTMLElement {
     }
   }
 
-  #onTouchEnd(touch: TouchData): void {
-    if (touch.identifier !== this.#activeTouch) return;
+  #onInputEnd(input: InputData): void {
+    if (input.identifier !== this.#activeInput) return;
 
-    this.#activeTouch = null;
+    this.#activeInput = null;
     this.#container?.classList.remove('active');
 
     // Reset nub position
@@ -383,14 +462,12 @@ export class VirtualJoystickElement extends HTMLElement {
       this.#updateNubPosition({ x: 0, y: 0 });
     }
 
-    // Hide container in dynamic mode
-    if (this.mode === 'dynamic' && this.#container) {
-      // Could add fade out animation here
-    }
+    // Note: In dynamic mode, the CSS handles hiding via .active class removal
+    // In semi mode, #semiModeBasePosition persists for catching on next input
 
     // Emit end event
     this.#emitEvent<JoystickEndData>('joystick-end', {
-      identifier: touch.identifier,
+      identifier: input.identifier,
       timestamp: performance.now(),
     });
   }

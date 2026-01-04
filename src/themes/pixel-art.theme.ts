@@ -1,41 +1,14 @@
 /**
- * Pixel Art theme - retro game aesthetic.
+ * Pixel Art theme - retro game aesthetic with detailed SVG sprites.
  */
 
 import type { Theme, ThemeConfig } from './theme.interface';
-
-// Base64 encoded simple pixel art sprites
-// These are placeholder patterns - can be replaced with actual sprites
-const PIXEL_PAD_SVG = `data:image/svg+xml,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect x="4" y="0" width="24" height="4" fill="#3a3a5c"/>
-  <rect x="0" y="4" width="4" height="24" fill="#3a3a5c"/>
-  <rect x="28" y="4" width="4" height="24" fill="#3a3a5c"/>
-  <rect x="4" y="28" width="24" height="4" fill="#3a3a5c"/>
-  <rect x="4" y="4" width="24" height="24" fill="#2a2a4c"/>
-  <rect x="8" y="8" width="16" height="16" fill="#1a1a3c"/>
-</svg>
-`)}`;
-
-const PIXEL_NUB_SVG = `data:image/svg+xml,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <rect x="4" y="0" width="8" height="4" fill="#6a6a9c"/>
-  <rect x="0" y="4" width="4" height="8" fill="#6a6a9c"/>
-  <rect x="12" y="4" width="4" height="8" fill="#4a4a7c"/>
-  <rect x="4" y="12" width="8" height="4" fill="#4a4a7c"/>
-  <rect x="4" y="4" width="8" height="8" fill="#5a5a8c"/>
-</svg>
-`)}`;
-
-const PIXEL_BUTTON_SVG = `data:image/svg+xml,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <rect x="4" y="0" width="8" height="4" fill="#9c6a6a"/>
-  <rect x="0" y="4" width="4" height="8" fill="#9c6a6a"/>
-  <rect x="12" y="4" width="4" height="8" fill="#7c4a4a"/>
-  <rect x="4" y="12" width="8" height="4" fill="#7c4a4a"/>
-  <rect x="4" y="4" width="8" height="8" fill="#8c5a5a"/>
-</svg>
-`)}`;
+import {
+  PIXEL_PAD_SVG,
+  PIXEL_NUB_SVG,
+  PIXEL_BUTTON_RED_SVG,
+  PIXEL_BUTTON_GREEN_SVG,
+} from './sprites';
 
 export const pixelArtTheme: Theme = {
   name: 'pixel-art',
@@ -57,7 +30,7 @@ export const pixelArtTheme: Theme = {
   actionButton: {
     button: {
       type: 'image',
-      image: PIXEL_BUTTON_SVG,
+      image: PIXEL_BUTTON_RED_SVG,
       imageRendering: 'pixelated',
     },
   },
@@ -65,13 +38,13 @@ export const pixelArtTheme: Theme = {
   chargeButton: {
     button: {
       type: 'image',
-      image: PIXEL_BUTTON_SVG,
+      image: PIXEL_BUTTON_GREEN_SVG,
       imageRendering: 'pixelated',
     },
     chargeRing: {
       strokeWidth: 6,
-      trackColor: 'rgba(58, 58, 92, 0.5)',
-      chargeColors: ['#6a9c6a', '#9c9c6a', '#9c6a6a'],
+      trackColor: 'rgba(42, 42, 76, 0.5)',
+      chargeColors: ['#4a8c4a', '#8c8c4a', '#8c4a4a'],
     },
   },
 
@@ -88,8 +61,71 @@ export const pixelArtThemeConfig: ThemeConfig = {
   cssVars: {
     '--vj-size': '96px',
     '--vj-color': '#5a5a8c',
-    '--vj-rest-opacity': '0.7',
+    '--vj-rest-opacity': '0.8',
     '--vj-active-opacity': '1',
     '--vj-transition': '0s',
   },
 };
+
+/**
+ * CSS for pixel-art theme - can be injected or used with adoptedStyleSheets
+ */
+export const pixelArtCSS = `
+  /* Pixel Art Theme Styles */
+  :host([theme="pixel-art"]) {
+    --vj-transition: 0s;
+  }
+
+  :host([theme="pixel-art"]) .pad {
+    background: url('${PIXEL_PAD_SVG}') center/contain no-repeat;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  :host([theme="pixel-art"]) .nub {
+    background: url('${PIXEL_NUB_SVG}') center/contain no-repeat;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  :host([theme="pixel-art"]) .button {
+    background: url('${PIXEL_BUTTON_RED_SVG}') center/contain no-repeat;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* Pixel animations */
+  @keyframes pixelFadeIn {
+    0% { opacity: 0; }
+    33% { opacity: 0.3; }
+    66% { opacity: 0.6; }
+    100% { opacity: var(--vj-rest-opacity, 0.8); }
+  }
+
+  @keyframes pixelFadeOut {
+    0% { opacity: var(--vj-rest-opacity, 0.8); }
+    33% { opacity: 0.6; }
+    66% { opacity: 0.3; }
+    100% { opacity: 0; }
+  }
+
+  @keyframes pixelPress {
+    0% { transform: scale(1); }
+    100% { transform: scale(0.9); }
+  }
+
+  @keyframes pixelRelease {
+    0% { transform: scale(0.9); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+`;
