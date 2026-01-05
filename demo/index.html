@@ -126,21 +126,6 @@
         <div class="output" id="output-static">Touch the joystick...</div>
       </div>
 
-      <!-- Static Joystick - Pixel Art -->
-      <div class="demo-card">
-        <h2>Static Mode (Pixel Art)</h2>
-        <p class="description">Retro pixel art theme</p>
-        <div class="demo-area">
-          <virtual-joystick
-            id="joystick-pixel"
-            mode="static"
-            theme="pixel-art"
-            size="120"
-          ></virtual-joystick>
-        </div>
-        <div class="output" id="output-pixel">Touch the joystick...</div>
-      </div>
-
       <!-- Dynamic Mode -->
       <div class="demo-card">
         <h2>Dynamic Mode</h2>
@@ -212,38 +197,11 @@
               id="action-btn"
               size="70"
             ></virtual-action-button>
-            <virtual-action-button
-              id="action-btn-pixel"
-              theme="pixel-art"
-              size="70"
-            ></virtual-action-button>
           </div>
         </div>
         <div class="output" id="output-action">Press a button...</div>
       </div>
 
-      <!-- Charge Button -->
-      <div class="demo-card">
-        <h2>Charge Buttons</h2>
-        <p class="description">Hold to charge, release to activate</p>
-        <div class="demo-area">
-          <div class="buttons-row">
-            <virtual-charge-button
-              id="charge-btn"
-              size="70"
-              charge-time="1000"
-              show-percentage
-            ></virtual-charge-button>
-            <virtual-charge-button
-              id="charge-btn-pixel"
-              theme="pixel-art"
-              size="70"
-              charge-time="800"
-            ></virtual-charge-button>
-          </div>
-        </div>
-        <div class="output" id="output-charge">Hold to charge...</div>
-      </div>
     </div>
 
     <script type="module">
@@ -260,15 +218,6 @@
       document.getElementById('joystick-static').addEventListener('joystick-move', (e) => {
         const d = e.detail;
         staticOut.textContent = `pos: ${fmtPos(d.position)}
-force: ${d.force.toFixed(2)}
-dir: ${d.direction.angle}`;
-      });
-
-      // Pixel joystick
-      const pixelOut = document.getElementById('output-pixel');
-      document.getElementById('joystick-pixel').addEventListener('joystick-move', (e) => {
-        const d = e.detail;
-        pixelOut.textContent = `pos: ${fmtPos(d.position)}
 force: ${d.force.toFixed(2)}
 dir: ${d.direction.angle}`;
       });
@@ -322,31 +271,14 @@ raw: ${fmtPos(d.rawPosition)}`;
 
       // Action button events
       const actionOut = document.getElementById('output-action');
-      ['action-btn', 'action-btn-pixel'].forEach(id => {
-        const btn = document.getElementById(id);
-        btn.addEventListener('button-press', () => {
-          actionOut.textContent = `${id}: PRESSED`;
-        });
-        btn.addEventListener('button-release', (e) => {
-          actionOut.textContent = `${id}: released
-duration: ${e.detail.duration.toFixed(0)}ms`;
-        });
+      const actionBtn = document.getElementById('action-btn');
+      actionBtn.addEventListener('button-press', () => {
+        actionOut.textContent = 'PRESSED';
+      });
+      actionBtn.addEventListener('button-release', (e) => {
+        actionOut.textContent = `Released\nduration: ${e.detail.duration.toFixed(0)}ms`;
       });
 
-      // Charge button events
-      const chargeOut = document.getElementById('output-charge');
-      ['charge-btn', 'charge-btn-pixel'].forEach(id => {
-        const btn = document.getElementById(id);
-        btn.addEventListener('charge-update', (e) => {
-          chargeOut.textContent = `${id}: charging
-percent: ${e.detail.percent.toFixed(0)}%`;
-        });
-        btn.addEventListener('charge-release', (e) => {
-          chargeOut.textContent = `${id}: RELEASED!
-final: ${e.detail.percent.toFixed(0)}%
-activated: ${e.detail.activated}`;
-        });
-      });
     </script>
   </body>
 </html>

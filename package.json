@@ -1,6 +1,6 @@
 {
   "name": "virtual-joystick",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Web Components library for mobile game touch controls",
   "author": "Paul",

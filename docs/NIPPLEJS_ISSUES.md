@@ -35,7 +35,7 @@ Análisis completo de los issues de [nipplejs](https://github.com/yoannmoinet/ni
 
 ---
 
-## 🔴 Bugs Críticos (MUST FIX)
+## Bugs Criticos (MUST FIX)
 
 ### #231 - Firefox Android: Static Joystick Freezes
 **Estado:** Open | **Creado:** 2025-08-29
@@ -47,7 +47,7 @@ Análisis completo de los issues de [nipplejs](https://github.com/yoannmoinet/ni
 **Solución:**
 ```typescript
 handleTouchEnd(event: TouchEvent): void {
-  // ❌ NUNCA hacer esto en touchend
+  // [NO] NUNCA hacer esto en touchend
   // event.preventDefault();
 
   for (const touch of Array.from(event.changedTouches)) {
@@ -56,7 +56,7 @@ handleTouchEnd(event: TouchEvent): void {
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Mitigado
+**Estado en virtual-joystick:** [OK] Mitigado
 
 ---
 
@@ -86,7 +86,7 @@ function getLocalPosition(clientX: number, clientY: number, element: HTMLElement
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado en `transform-utils.ts`
+**Estado en virtual-joystick:** [OK] Implementado en `transform-utils.ts` e integrado en `joystick.element.ts`
 
 ---
 
@@ -99,7 +99,7 @@ function getLocalPosition(clientX: number, clientY: number, element: HTMLElement
 
 **Solución:**
 ```typescript
-// ✅ Procesar TODOS los changedTouches
+// [OK] Procesar TODOS los changedTouches
 handleTouchEnd(event: TouchEvent): void {
   for (const touch of Array.from(event.changedTouches)) {
     if (this.activeInputs.has(touch.identifier)) {
@@ -108,11 +108,11 @@ handleTouchEnd(event: TouchEvent): void {
   }
 }
 
-// ❌ NO solo el primero
+// [NO] NO solo el primero
 // const touch = event.changedTouches[0];
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
@@ -125,7 +125,7 @@ handleTouchEnd(event: TouchEvent): void {
 
 **Solución:** Cada instancia de joystick debe trackear solo SU touch identifier.
 
-**Estado en virtual-joystick:** ✅ Implementado con `InputManager`
+**Estado en virtual-joystick:** [OK] Implementado con `InputManager`
 
 ---
 
@@ -153,7 +153,7 @@ handleTouchStart(event: TouchEvent): void {
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
@@ -168,12 +168,12 @@ handleTouchStart(event: TouchEvent): void {
 ```typescript
 handleTouchStart(event: TouchEvent): void {
   event.preventDefault();
-  event.stopPropagation(); // ✅ Evitar interferencia
+  event.stopPropagation(); // [OK] Evitar interferencia
   // ...
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
@@ -185,17 +185,24 @@ handleTouchStart(event: TouchEvent): void {
 **Causa raíz (de comentarios):**
 > "I found that problem is exactly same as #94, but for pointer events. Affected devices sometimes does not send `pointerremove` event."
 
-**Workaround de la comunidad:**
+**Solución implementada:**
 ```typescript
-// Timeout para limpiar touches zombies
-const ZOMBIE_TIMEOUT = 1000; // ms
+// InputManager trackea última actividad por input
+readonly #lastActivityTime = new Map<number, number>();
+static readonly ZOMBIE_TIMEOUT = 1000; // ms
 
-if (Date.now() - lastMoveTime > ZOMBIE_TIMEOUT) {
-  this.forceRelease();
+// Llamar periódicamente (en RAF loop)
+checkZombies(): void {
+  const now = Date.now();
+  for (const [id, lastTime] of this.#lastActivityTime) {
+    if (now - lastTime > InputManager.ZOMBIE_TIMEOUT) {
+      this.release(id);
+    }
+  }
 }
 ```
 
-**Estado en virtual-joystick:** ⚠️ Parcialmente mitigado con visibility change handler
+**Estado en virtual-joystick:** Implementado en `input-manager.ts`. El metodo `checkZombies()` existe pero NO se llama en RAF loop (causaba race conditions). En su lugar, se usa singleton visibility change handler que libera todos los inputs cuando la pagina pierde foco.
 
 ---
 
@@ -209,7 +216,7 @@ if (Date.now() - lastMoveTime > ZOMBIE_TIMEOUT) {
 **Solución:**
 ```typescript
 function calculateAngle(x: number, y: number, lockX: boolean, lockY: boolean) {
-  // ✅ Aplicar locks PRIMERO
+  // [OK] Aplicar locks PRIMERO
   const effectiveX = lockX ? 0 : x;
   const effectiveY = lockY ? 0 : y;
 
@@ -224,7 +231,7 @@ function calculateAngle(x: number, y: number, lockX: boolean, lockY: boolean) {
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
@@ -247,7 +254,7 @@ document.addEventListener('visibilitychange', () => {
 });
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
@@ -258,7 +265,7 @@ document.addEventListener('visibilitychange', () => {
 
 **Causa raíz:** Cambios en iOS 13 que afectan touch events.
 
-**Estado en virtual-joystick:** ⚠️ Requiere testing en iOS moderno
+**Estado en virtual-joystick:** [PENDIENTE] Requiere testing en iOS moderno
 
 ---
 
@@ -269,7 +276,7 @@ document.addEventListener('visibilitychange', () => {
 
 **Causa raíz:** Conflicto de pointer events entre nipplejs y Pixi.js.
 
-**Estado en virtual-joystick:** ⚠️ Requiere testing con canvas libraries
+**Estado en virtual-joystick:** [PENDIENTE] Requiere testing con canvas libraries
 
 ---
 
@@ -287,11 +294,11 @@ disconnectedCallback(): void {
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado en `disconnectedCallback`
+**Estado en virtual-joystick:** [OK] Implementado en `disconnectedCallback`
 
 ---
 
-## 🟠 Bugs de Performance
+## Bugs de Performance
 
 ### #168 - High CPU Usage
 **Estado:** Closed
@@ -320,20 +327,20 @@ handleTouchMove(event: TouchEvent): void {
 }
 ```
 
-**Estado en virtual-joystick:** ✅ Implementado
+**Estado en virtual-joystick:** [OK] Implementado
 
 ---
 
-## 🟡 Bugs de Compatibilidad por Plataforma
+## Bugs de Compatibilidad por Plataforma
 
 ### iOS Safari
 | # | Título | Estado |
 |---|--------|--------|
-| #185 | Zoom on long-press | ✅ Mitigado con CSS |
+| #185 | Zoom on long-press | [OK] Mitigado con CSS |
 | #174 | Frozen on iOS 15.3 | Closed |
-| #126 | Failure on iOS 13+ | ⚠️ Monitorear |
-| #122 | Unresponsive with Pixi.js | ⚠️ Monitorear |
-| #113 | Freeze with 2 instances | ✅ Mitigado |
+| #126 | Failure on iOS 13+ | [PENDIENTE] Monitorear |
+| #122 | Unresponsive with Pixi.js | [PENDIENTE] Monitorear |
+| #113 | Freeze with 2 instances | [OK] Mitigado |
 | #94 | Gets stuck in dynamic mode | Closed |
 | #93 | Gets stuck on status bar | Closed |
 | #33 | Gets stuck on iPhone | Closed |
@@ -341,7 +348,7 @@ handleTouchMove(event: TouchEvent): void {
 ### Firefox Android
 | # | Título | Estado |
 |---|--------|--------|
-| #231 | Static joystick freezes | ✅ Mitigado |
+| #231 | Static joystick freezes | [OK] Mitigado |
 | #158 | Two joysticks freeze | Closed |
 
 ### Chrome
@@ -360,7 +367,7 @@ handleTouchMove(event: TouchEvent): void {
 
 ---
 
-## 🔵 Feature Requests
+## Feature Requests
 
 ### Alta Prioridad (más solicitados)
 
@@ -374,43 +381,46 @@ handleTouchMove(event: TouchEvent): void {
 | #42 | Lock axis movement | Closed | 6 |
 
 ### Implementados en virtual-joystick
-- ✅ ESM + UMD build
-- ✅ TypeScript nativo
-- ✅ Lock X/Y axis
-- ✅ Square shape
-- ✅ Static/Semi/Dynamic modes
-- ✅ Catch distance para semi mode
-- ✅ Follow mode
-- ✅ Rest joystick option
-- ✅ Data only mode
+- ESM + UMD build
+- TypeScript nativo
+- Lock X/Y axis
+- Square shape
+- Static/Semi/Dynamic modes
+- Catch distance para semi mode
+- Rest joystick option (no-rest attribute)
+- Data only mode (lazy Shadow DOM)
 
 ### Pendientes/Opcionales
-- ⏳ Disable attribute
-- ⏳ Force Touch / Pressure
-- ⏳ Programmatic position update
+- [TODO] Disable attribute
+- [TODO] Force Touch / Pressure
+- [TODO] Programmatic position update
 
 ---
 
-## 💡 Workarounds de la Comunidad
+## Workarounds de la Comunidad
 
 ### Zombie Touch Cleanup (de #151)
-```typescript
-// Limpiar touches huérfanos que el browser no reporta
-const activeTouchIds = new Set(
-  Array.from(event.touches).map(t => t.identifier)
-);
+El metodo `checkZombies()` existe en InputManager para limpiar inputs que no recibieron
+evento de fin (algunos dispositivos no envian `pointerremove`). Sin embargo, NO se llama
+en el RAF loop porque causaba race conditions. En su lugar, se usa el singleton
+visibility change handler.
 
-for (const id of this.trackedIds) {
-  if (!activeTouchIds.has(id)) {
-    this.release(id);
+```typescript
+// InputManager.checkZombies() - disponible para llamar manualmente si necesario
+checkZombies(): void {
+  const now = Date.now();
+  for (const [id, lastTime] of this.#lastActivityTime) {
+    if (now - lastTime > InputManager.ZOMBIE_TIMEOUT) {
+      this.release(id);
+    }
   }
 }
 ```
 
 ### Pointer Events Priority (de #151)
 ```typescript
-// Usar Pointer Events si están disponibles
-// Son más robustos que Touch Events
+// Usar Pointer Events si estan disponibles
+// Son mas robustos que Touch Events
 if ('PointerEvent' in window) {
   // pointerdown/pointermove/pointerup/pointercancel
 } else {
@@ -418,18 +428,31 @@ if ('PointerEvent' in window) {
 }
 ```
 
-### Force Release on Visibility Change (de comentarios)
+### Force Release on Visibility Change - Singleton (ACTUALIZADO)
 ```typescript
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    this.releaseAll();
-  }
-});
+// InputManager usa un singleton para visibilitychange
+// Solo se registra UN listener global para todas las instancias
+static #visibilityInitialized = false;
+static #instances = new Set<InputManager>();
+
+static #initVisibilityHandler(): void {
+  if (this.#visibilityInitialized) return;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      for (const instance of this.#instances) {
+        instance.releaseAll();
+      }
+    }
+  });
+
+  this.#visibilityInitialized = true;
+}
 ```
 
 ---
 
-## 🧪 Tests Requeridos
+## Tests Requeridos
 
 Basados en los issues reportados, virtual-joystick debe incluir tests para:
 
@@ -448,10 +471,10 @@ Basados en los issues reportados, virtual-joystick debe incluir tests para:
 - [ ] No freeze en modo estático con dos joysticks
 - [ ] touchend sin preventDefault funciona correctamente
 
-### CSS Transforms
-- [ ] Posición correcta con `scale()`
-- [ ] Posición correcta con `rotate()`
-- [ ] Posición correcta con `translate()`
+### CSS Transforms - [OK] Tests añadidos
+- [x] Posición correcta con `scale()`
+- [x] Posición correcta con `rotate()`
+- [x] Posición correcta con `translate()`
 - [ ] Posición correcta con transform complejo
 
 ### Performance
@@ -481,7 +504,7 @@ Basados en los issues reportados, virtual-joystick debe incluir tests para:
 
 ---
 
-## 📊 Análisis de Patrones
+## Analisis de Patrones
 
 ### Problemas más comunes
 1. **Multi-touch** - 15+ issues relacionados
@@ -497,19 +520,36 @@ Basados en los issues reportados, virtual-joystick debe incluir tests para:
 4. Event listeners no limpiados
 5. Race conditions en touch events rápidos
 
-### Mejores prácticas derivadas
-1. Usar Pointer Events como primera opción
+### Mejores practicas derivadas
+1. Usar Pointer Events como primera opcion
 2. NO `preventDefault()` en touchend
-3. Trackear cada touch por identifier único
+3. Trackear cada touch por identifier unico con prefijos de tipo
 4. Usar RAF batching para eventos move
 5. Limpiar TODO en disconnectedCallback
-6. Compensar CSS transforms con DOMMatrix
+6. Compensar CSS transforms con DOMMatrix (con proteccion para matrices singulares)
 7. Escuchar pointerup/mouseup en document
-8. Manejar visibility change
+8. Manejar visibility change con singleton (un listener para todas las instancias)
+9. Separar tracking de listeners para pointer y mouse (evita memory leaks)
+10. Validar atributos numericos con valores por defecto seguros
 
 ---
 
-## 🔗 Referencias
+## Bugs Adicionales Encontrados y Corregidos
+
+Durante el desarrollo de virtual-joystick se identificaron y corrigieron bugs adicionales
+no reportados en nipplejs:
+
+| Bug | Causa | Solucion |
+|-----|-------|----------|
+| Memory leak en document listeners | Un solo boolean para pointer Y mouse | Booleans separados: `#pointerListenersAdded`, `#mouseListenersAdded` |
+| Cleanup mismatch en ActionButton | Setup condicional, cleanup incondicional | Cleanup tambien condicional segun `supportsPointer` |
+| Race condition en RAF + zombies | `checkZombies()` en RAF podia borrar input activo | Removido de RAF, usar visibility change |
+| Collision touch.id=0 vs mouse=0 | Ambos usan identifier 0 | Prefijos: `pointer-X`, `touch-X`, `mouse-0` |
+| Matriz singular en transform | DOMMatrix.inverse() falla | Try-catch + validacion de determinante |
+
+---
+
+## Referencias
 
 - [nipplejs GitHub Issues](https://github.com/yoannmoinet/nipplejs/issues)
 - [nipplejs Source Code](https://github.com/yoannmoinet/nipplejs/tree/master/src)

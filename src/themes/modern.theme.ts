@@ -41,23 +41,6 @@ export const modernTheme: Theme = {
     },
   },
 
-  chargeButton: {
-    button: {
-      type: 'css',
-      css: {
-        background: 'linear-gradient(135deg, #27ae60 0%, #1e8449 100%)',
-        border: '2px solid rgba(255, 255, 255, 0.4)',
-        borderRadius: '50%',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-      },
-    },
-    chargeRing: {
-      strokeWidth: 4,
-      trackColor: 'rgba(255, 255, 255, 0.2)',
-      chargeColors: ['#27ae60', '#f1c40f', '#e74c3c'],
-    },
-  },
-
   animations: {
     fadeIn: 'fadeIn 0.15s ease-out',
     fadeOut: 'fadeOut 0.15s ease-in',

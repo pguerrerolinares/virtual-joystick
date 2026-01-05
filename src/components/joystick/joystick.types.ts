@@ -2,11 +2,15 @@
  * Types for virtual-joystick component.
  */
 
-import type { Direction, Point, AngleData } from '../../core/math-utils';
+import type {
+  Point,
+  AngleData,
+  CompassDirection,
+} from '../../core/math-utils';
 
 export type JoystickMode = 'static' | 'semi' | 'dynamic';
 export type JoystickShape = 'circle' | 'square';
-export type JoystickTheme = 'modern' | 'pixel-art' | 'custom';
+export type JoystickTheme = 'modern' | 'custom';
 
 export interface JoystickOptions {
   /** Joystick mode (default: 'dynamic') */
@@ -25,8 +29,6 @@ export interface JoystickOptions {
   lockY?: boolean;
   /** Distance to catch joystick in semi mode (default: 50) */
   catchDistance?: number;
-  /** Whether to follow finger beyond limit (default: false) */
-  follow?: boolean;
   /** Return to center on release (default: true) */
   restJoystick?: boolean;
   /** Only emit events, no DOM (default: false) */
@@ -55,8 +57,8 @@ export interface JoystickMoveData {
   distance: number;
   /** Angle data */
   angle: AngleData;
-  /** Direction data */
-  direction: Direction;
+  /** Compass direction: 'n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw', '' */
+  compass: CompassDirection;
   /** Unit vector */
   vector: Point;
   /** Timestamp */

@@ -13,10 +13,7 @@ import type {
   ActionButtonPressData,
   ActionButtonReleaseData,
 } from './action-button.types';
-
-/** Feature detection */
-const supportsPointer =
-  typeof window !== 'undefined' && 'PointerEvent' in window;
+import { InputManager } from '../../core/input-manager';
 
 export class VirtualActionButtonElement extends HTMLElement {
   static tagName = 'virtual-action-button';
@@ -29,7 +26,7 @@ export class VirtualActionButtonElement extends HTMLElement {
 
   #button: HTMLDivElement | null = null;
   #pressStartTime: number | null = null;
-  #activeInput: number | null = null;
+  #activeInput: string | null = null;
 
   readonly #boundPointerDown = this.#handlePointerDown.bind(this);
   readonly #boundPointerUp = this.#handlePointerUp.bind(this);
@@ -118,7 +115,7 @@ export class VirtualActionButtonElement extends HTMLElement {
   // =====================
 
   #setupEventListeners(): void {
-    if (supportsPointer) {
+    if (InputManager.supportsPointer) {
       // Pointer Events (handles touch + mouse + pen)
       this.addEventListener('pointerdown', this.#boundPointerDown);
       document.addEventListener('pointerup', this.#boundPointerUp);
@@ -138,19 +135,19 @@ export class VirtualActionButtonElement extends HTMLElement {
   }
 
   #cleanup(): void {
-    // Remove Pointer events
-    this.removeEventListener('pointerdown', this.#boundPointerDown);
-    document.removeEventListener('pointerup', this.#boundPointerUp);
-    document.removeEventListener('pointercancel', this.#boundPointerUp);
-
-    // Remove Touch events
-    this.removeEventListener('touchstart', this.#boundTouchStart);
-    this.removeEventListener('touchend', this.#boundTouchEnd);
-    this.removeEventListener('touchcancel', this.#boundTouchEnd);
-
-    // Remove Mouse events
-    this.removeEventListener('mousedown', this.#boundMouseDown);
-    document.removeEventListener('mouseup', this.#boundMouseUp);
+    if (InputManager.supportsPointer) {
+      // Remove Pointer events (only if they were added)
+      this.removeEventListener('pointerdown', this.#boundPointerDown);
+      document.removeEventListener('pointerup', this.#boundPointerUp);
+      document.removeEventListener('pointercancel', this.#boundPointerUp);
+    } else {
+      // Remove Touch + Mouse events (only if they were added)
+      this.removeEventListener('touchstart', this.#boundTouchStart);
+      this.removeEventListener('touchend', this.#boundTouchEnd);
+      this.removeEventListener('touchcancel', this.#boundTouchEnd);
+      this.removeEventListener('mousedown', this.#boundMouseDown);
+      document.removeEventListener('mouseup', this.#boundMouseUp);
+    }
   }
 
   // =====================
@@ -163,7 +160,7 @@ export class VirtualActionButtonElement extends HTMLElement {
 
     if (this.#activeInput !== null) return;
 
-    this.#activeInput = event.pointerId;
+    this.#activeInput = `pointer-${event.pointerId}`;
     this.#pressStartTime = performance.now();
 
     this.#button?.classList.add('pressed');
@@ -174,7 +171,7 @@ export class VirtualActionButtonElement extends HTMLElement {
   }
 
   #handlePointerUp(event: PointerEvent): void {
-    if (event.pointerId !== this.#activeInput) return;
+    if (`pointer-${event.pointerId}` !== this.#activeInput) return;
 
     this.#release();
   }
@@ -192,7 +189,7 @@ export class VirtualActionButtonElement extends HTMLElement {
     const touch = event.changedTouches[0];
     if (!touch) return;
 
-    this.#activeInput = touch.identifier;
+    this.#activeInput = `touch-${touch.identifier}`;
     this.#pressStartTime = performance.now();
 
     this.#button?.classList.add('pressed');
@@ -205,7 +202,7 @@ export class VirtualActionButtonElement extends HTMLElement {
   #handleTouchEnd(event: TouchEvent): void {
     // Find the touch that ended
     for (const touch of Array.from(event.changedTouches)) {
-      if (touch.identifier === this.#activeInput) {
+      if (`touch-${touch.identifier}` === this.#activeInput) {
         this.#release();
         break;
       }
@@ -222,7 +219,7 @@ export class VirtualActionButtonElement extends HTMLElement {
 
     if (this.#activeInput !== null) return;
 
-    this.#activeInput = 0; // Mouse always uses identifier 0
+    this.#activeInput = 'mouse-0';
     this.#pressStartTime = performance.now();
 
     this.#button?.classList.add('pressed');
@@ -233,7 +230,7 @@ export class VirtualActionButtonElement extends HTMLElement {
   }
 
   #handleMouseUp(_event: MouseEvent): void {
-    if (this.#activeInput !== 0) return;
+    if (this.#activeInput !== 'mouse-0') return;
 
     this.#release();
   }

@@ -2,8 +2,6 @@
  * Action button component styles using Constructable Stylesheet.
  */
 
-import { PIXEL_BUTTON_RED_SVG } from '../../themes/sprites';
-
 export const styles = new CSSStyleSheet();
 
 styles.replaceSync(`
@@ -56,24 +54,6 @@ styles.replaceSync(`
   /* Default slot for custom content */
   ::slotted(*) {
     pointer-events: none;
-  }
-
-  /* ========================
-     Theme: Pixel Art
-     ======================== */
-  :host([theme="pixel-art"]) .button {
-    background: url('${PIXEL_BUTTON_RED_SVG}') center/contain no-repeat;
-    border: none;
-    box-shadow: none;
-    border-radius: 0;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-  }
-
-  :host([theme="pixel-art"]) .button:active,
-  :host([theme="pixel-art"]) .button.pressed {
-    transform: translate(2px, 2px) scale(0.95);
-    box-shadow: none;
   }
 
   /* ========================

@@ -5,7 +5,7 @@
  * ```html
  * <virtual-joystick
  *   mode="static"
- *   theme="pixel-art"
+ *   theme="modern"
  *   size="100"
  * ></virtual-joystick>
  * ```
@@ -26,10 +26,11 @@ import {
   clampToSquare,
   calculateAngle,
   normalizeVector,
-  getDirection,
+  getCompassDirection,
   distance,
   type Point,
 } from '../../core/math-utils';
+import { getLocalPosition } from '../../core/transform-utils';
 
 export class VirtualJoystickElement extends HTMLElement {
   static tagName = 'virtual-joystick';
@@ -44,13 +45,12 @@ export class VirtualJoystickElement extends HTMLElement {
       'lock-x',
       'lock-y',
       'catch-distance',
-      'follow',
-      'rest-joystick',
+      'no-rest',
       'data-only',
     ];
   }
 
-  readonly #shadow: ShadowRoot;
+  #shadow: ShadowRoot | null = null;
   readonly #inputManager = new InputManager();
 
   #container: HTMLDivElement | null = null;
@@ -62,6 +62,7 @@ export class VirtualJoystickElement extends HTMLElement {
   #semiModeBasePosition: Point | null = null; // Base position for semi mode
   #animationFrameId: number | null = null;
   #pendingMoveData: JoystickMoveData | null = null;
+  #lastCompass: string = ''; // For capture/release tracking (dondido pattern)
 
   // Bound handlers for cleanup
   readonly #boundPointerDown = this.#handlePointerDown.bind(this);
@@ -69,12 +70,10 @@ export class VirtualJoystickElement extends HTMLElement {
   readonly #boundTouchMove = this.#handleTouchMove.bind(this);
   readonly #boundTouchEnd = this.#handleTouchEnd.bind(this);
   readonly #boundMouseDown = this.#handleMouseDown.bind(this);
-  readonly #boundVisibilityChange = this.#handleVisibilityChange.bind(this);
 
   constructor() {
     super();
-    this.#shadow = this.attachShadow({ mode: 'open' });
-    this.#shadow.adoptedStyleSheets = [styles];
+    // Shadow DOM is attached lazily in connectedCallback (not needed for data-only mode)
 
     // Setup input manager callbacks
     this.#inputManager
@@ -102,14 +101,16 @@ export class VirtualJoystickElement extends HTMLElement {
   }
 
   get size(): number {
-    return parseInt(this.getAttribute('size') || '100', 10);
+    const val = parseInt(this.getAttribute('size') || '100', 10);
+    return Number.isNaN(val) || val <= 0 ? 100 : val;
   }
   set size(value: number) {
     this.setAttribute('size', String(value));
   }
 
   get threshold(): number {
-    return parseFloat(this.getAttribute('threshold') || '0.1');
+    const val = parseFloat(this.getAttribute('threshold') || '0.1');
+    return Number.isNaN(val) ? 0.1 : Math.max(0, Math.min(1, val));
   }
   set threshold(value: number) {
     this.setAttribute('threshold', String(value));
@@ -137,17 +138,11 @@ export class VirtualJoystickElement extends HTMLElement {
   }
 
   get catchDistance(): number {
-    return parseInt(this.getAttribute('catch-distance') || '50', 10);
+    const val = parseInt(this.getAttribute('catch-distance') || '50', 10);
+    return Number.isNaN(val) || val < 0 ? 50 : val;
   }
   set catchDistance(value: number) {
     this.setAttribute('catch-distance', String(value));
-  }
-
-  get follow(): boolean {
-    return this.hasAttribute('follow');
-  }
-  set follow(value: boolean) {
-    this.toggleAttribute('follow', value);
   }
 
   get restJoystick(): boolean {
@@ -194,10 +189,16 @@ export class VirtualJoystickElement extends HTMLElement {
   #render(): void {
     if (this.dataOnly) return;
 
+    // Lazy shadow DOM attachment
+    if (!this.#shadow) {
+      this.#shadow = this.attachShadow({ mode: 'open' });
+      this.#shadow.adoptedStyleSheets = [styles];
+    }
+
     this.#shadow.innerHTML = `
-      <div class="container">
-        <div class="pad"></div>
-        <div class="nub"></div>
+      <div class="container" part="container">
+        <div class="pad" part="pad"></div>
+        <div class="nub" part="nub"></div>
       </div>
     `;
 
@@ -233,9 +234,7 @@ export class VirtualJoystickElement extends HTMLElement {
       // Mouse events for desktop
       this.addEventListener('mousedown', this.#boundMouseDown);
     }
-
-    // Handle visibility change (app switch, tab change)
-    document.addEventListener('visibilitychange', this.#boundVisibilityChange);
+    // Note: visibilitychange is handled by InputManager singleton
   }
 
   #cleanup(): void {
@@ -250,11 +249,6 @@ export class VirtualJoystickElement extends HTMLElement {
 
     // Remove Mouse events
     this.removeEventListener('mousedown', this.#boundMouseDown);
-
-    document.removeEventListener(
-      'visibilitychange',
-      this.#boundVisibilityChange
-    );
 
     if (this.#animationFrameId !== null) {
       cancelAnimationFrame(this.#animationFrameId);
@@ -294,12 +288,6 @@ export class VirtualJoystickElement extends HTMLElement {
     event.preventDefault();
     event.stopPropagation();
     this.#inputManager.handleMouseDown(event);
-  }
-
-  #handleVisibilityChange(): void {
-    if (document.hidden) {
-      this.#inputManager.releaseAll();
-    }
   }
 
   // =====================
@@ -381,11 +369,23 @@ export class VirtualJoystickElement extends HTMLElement {
 
   /**
    * Position the container centered at a given point.
+   * For dynamic mode: uses viewport coords (position: fixed).
+   * For static/semi modes: converts to local coords with transform compensation (#222).
    */
   #positionContainerAt(point: Point): void {
     if (!this.#container) return;
-    this.#container.style.left = `${point.x - this.size / 2}px`;
-    this.#container.style.top = `${point.y - this.size / 2}px`;
+
+    // Dynamic mode uses position: fixed, so use viewport coords directly
+    // Static and semi modes use position: relative/absolute, so convert to local coords
+    if (this.mode === 'dynamic') {
+      this.#container.style.left = `${point.x - this.size / 2}px`;
+      this.#container.style.top = `${point.y - this.size / 2}px`;
+    } else {
+      // static/semi: position: relative/absolute uses local coordinates
+      const localPos = getLocalPosition(point.x, point.y, this);
+      this.#container.style.left = `${localPos.x - this.size / 2}px`;
+      this.#container.style.top = `${localPos.y - this.size / 2}px`;
+    }
   }
 
   #onInputMove(input: InputData): void {
@@ -421,6 +421,9 @@ export class VirtualJoystickElement extends HTMLElement {
     // Calculate angle (with locks already applied to delta)
     const angleData = calculateAngle(clamped.x, clamped.y, false, false);
 
+    // Calculate compass direction (dondido pattern)
+    const compass = getCompassDirection(angleData.degree, force, this.threshold);
+
     // Create move data
     const moveData: JoystickMoveData = {
       identifier: input.identifier,
@@ -432,10 +435,26 @@ export class VirtualJoystickElement extends HTMLElement {
       force,
       distance,
       angle: angleData,
-      direction: getDirection(angleData.degree),
+      compass,
       vector: normalizeVector(clamped.x, clamped.y),
       timestamp: performance.now(),
     };
+
+    // Capture/Release tracking (dondido pattern)
+    // Capture = directions in new but not in old
+    // Release = directions in old but not in new
+    const capture = this.#getNewChars(this.#lastCompass, compass);
+    const release = this.#getNewChars(compass, this.#lastCompass);
+    this.#lastCompass = compass;
+
+    // Dataset output for polling (dondido pattern - alternative to events)
+    this.dataset.x = String(moveData.position.x);
+    this.dataset.y = String(moveData.position.y);
+    this.dataset.force = String(force);
+    this.dataset.compass = compass;
+    this.dataset.degree = String(angleData.degree);
+    this.dataset.capture = capture;
+    this.dataset.release = release;
 
     // RAF batching for performance (#168)
     this.#pendingMoveData = moveData;
@@ -462,6 +481,16 @@ export class VirtualJoystickElement extends HTMLElement {
       this.#updateNubPosition({ x: 0, y: 0 });
     }
 
+    // Reset dataset (dondido pattern)
+    this.dataset.x = '0';
+    this.dataset.y = '0';
+    this.dataset.force = '0';
+    this.dataset.compass = '';
+    this.dataset.degree = '0';
+    this.dataset.capture = '';
+    this.dataset.release = this.#lastCompass; // Release all active directions
+    this.#lastCompass = '';
+
     // Note: In dynamic mode, the CSS handles hiding via .active class removal
     // In semi mode, #semiModeBasePosition persists for catching on next input
 
@@ -473,16 +502,34 @@ export class VirtualJoystickElement extends HTMLElement {
   }
 
   // =====================
+  // Direction Tracking (dondido pattern)
+  // =====================
+
+  /**
+   * Get characters that are in `newStr` but not in `oldStr`.
+   * Used for capture/release tracking.
+   * Example: getNewChars('n', 'ne') returns 'e' (new direction captured)
+   */
+  #getNewChars(oldStr: string, newStr: string): string {
+    let result = '';
+    for (const char of newStr) {
+      if (!oldStr.includes(char)) {
+        result += char;
+      }
+    }
+    return result;
+  }
+
+  // =====================
   // Visual Updates
   // =====================
 
   #updateNubPosition(position: Point): void {
     if (!this.#nub || this.dataOnly) return;
 
-    this.#nub.style.transform = `translate(
-      calc(-50% + ${position.x}px),
-      calc(-50% + ${position.y}px)
-    )`;
+    // Use CSS vars for position (dondido pattern - more efficient)
+    this.#nub.style.setProperty('--vj-nub-x', `${position.x}px`);
+    this.#nub.style.setProperty('--vj-nub-y', `${position.y}px`);
   }
 
   // =====================
@@ -509,7 +556,7 @@ export class VirtualJoystickElement extends HTMLElement {
         this.#updateSize();
         break;
       case 'data-only':
-        if (value !== null && !this.#container) {
+        if (value !== null && this.#shadow) {
           // Switched to data-only, clear DOM
           this.#shadow.innerHTML = '';
           this.#container = null;

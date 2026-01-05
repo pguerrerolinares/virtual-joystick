@@ -2,8 +2,6 @@
  * Joystick component styles using Constructable Stylesheet.
  */
 
-import { PIXEL_PAD_SVG, PIXEL_NUB_SVG } from '../../themes/sprites';
-
 export const styles = new CSSStyleSheet();
 
 styles.replaceSync(`
@@ -52,9 +50,9 @@ styles.replaceSync(`
     transition: opacity var(--vj-transition), visibility 0s 0s;
   }
 
-  /* Mode: semi - visible at fixed position, can be caught */
+  /* Mode: semi - visible at position, can be caught */
   :host([mode="semi"]) .container {
-    position: fixed;
+    position: absolute;
     pointer-events: none;
   }
 
@@ -89,7 +87,10 @@ styles.replaceSync(`
     background: var(--vj-nub-bg);
     border: var(--vj-nub-border);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transform: translate(-50%, -50%);
+    /* CSS vars for position (dondido pattern) */
+    --vj-nub-x: 0px;
+    --vj-nub-y: 0px;
+    transform: translate(calc(-50% + var(--vj-nub-x)), calc(-50% + var(--vj-nub-y)));
     left: 50%;
     top: 50%;
     transition: none;
@@ -98,32 +99,6 @@ styles.replaceSync(`
 
   .container:not(.active) .nub {
     transition: transform var(--vj-transition);
-  }
-
-  /* ========================
-     Theme: Pixel Art
-     ======================== */
-  :host([theme="pixel-art"]) {
-    --vj-transition: 0s;
-    --vj-rest-opacity: 0.8;
-  }
-
-  :host([theme="pixel-art"]) .pad {
-    background: url('${PIXEL_PAD_SVG}') center/contain no-repeat;
-    border: none;
-    box-shadow: none;
-    border-radius: 0;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-  }
-
-  :host([theme="pixel-art"]) .nub {
-    background: url('${PIXEL_NUB_SVG}') center/contain no-repeat;
-    border: none;
-    box-shadow: none;
-    border-radius: 0;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
   }
 
   /* ========================
@@ -155,12 +130,6 @@ styles.replaceSync(`
     border-radius: 8px;
   }
 
-  /* Pixel art + square = sharp corners */
-  :host([theme="pixel-art"][shape="square"]) .pad,
-  :host([theme="pixel-art"][shape="square"]) .nub {
-    border-radius: 0;
-  }
-
   /* ========================
      Animations
      ======================== */
@@ -172,19 +141,5 @@ styles.replaceSync(`
   @keyframes fadeOut {
     from { opacity: var(--vj-rest-opacity); }
     to { opacity: 0; }
-  }
-
-  @keyframes pixelFadeIn {
-    0% { opacity: 0; }
-    33% { opacity: 0.3; }
-    66% { opacity: 0.6; }
-    100% { opacity: var(--vj-rest-opacity); }
-  }
-
-  @keyframes pixelFadeOut {
-    0% { opacity: var(--vj-rest-opacity); }
-    33% { opacity: 0.6; }
-    66% { opacity: 0.3; }
-    100% { opacity: 0; }
   }
 `);

@@ -1,35 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
-  distance,
-  angle,
   calculateAngle,
   clampToCircle,
   clampToSquare,
   normalizeVector,
-  getDirection,
+  getCompassDirection,
 } from '../../src/core/math-utils';
 
 describe('math-utils', () => {
-  describe('distance', () => {
-    it('should calculate distance between two points', () => {
-      expect(distance({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
-      expect(distance({ x: 0, y: 0 }, { x: 0, y: 0 })).toBe(0);
-      expect(distance({ x: 1, y: 1 }, { x: 4, y: 5 })).toBe(5);
-    });
-
-    it('should handle negative coordinates', () => {
-      expect(distance({ x: -3, y: -4 }, { x: 0, y: 0 })).toBe(5);
-    });
-  });
-
-  describe('angle', () => {
-    it('should calculate angle in radians', () => {
-      expect(angle({ x: 0, y: 0 }, { x: 1, y: 0 })).toBe(0);
-      expect(angle({ x: 0, y: 0 }, { x: 0, y: 1 })).toBeCloseTo(Math.PI / 2);
-      expect(angle({ x: 0, y: 0 }, { x: -1, y: 0 })).toBeCloseTo(Math.PI);
-    });
-  });
-
   describe('calculateAngle', () => {
     it('should return angle data with radian and degree', () => {
       const result = calculateAngle(1, 0);
@@ -131,40 +109,59 @@ describe('math-utils', () => {
     });
   });
 
-  describe('getDirection', () => {
-    it('should return right for 0 degrees', () => {
-      const result = getDirection(0);
-      expect(result.angle).toBe('right');
+  describe('getCompassDirection', () => {
+    it('should return e for 0 degrees', () => {
+      expect(getCompassDirection(0)).toBe('e');
     });
 
-    it('should return up for 90 degrees', () => {
-      // Note: In screen coordinates, positive Y is down, but our angle calculation
-      // uses mathematical convention where positive Y is up
-      const result = getDirection(90);
-      expect(result.angle).toBe('up');
+    it('should return n for 90 degrees', () => {
+      expect(getCompassDirection(90)).toBe('n');
     });
 
-    it('should return left for 180 degrees', () => {
-      const result = getDirection(180);
-      expect(result.angle).toBe('left');
+    it('should return w for 180 degrees', () => {
+      expect(getCompassDirection(180)).toBe('w');
     });
 
-    it('should return down for 270 degrees', () => {
-      const result = getDirection(270);
-      expect(result.angle).toBe('down');
+    it('should return s for 270 degrees', () => {
+      expect(getCompassDirection(270)).toBe('s');
     });
 
-    it('should return diagonal directions', () => {
-      expect(getDirection(45).angle).toBe('up-right');
-      expect(getDirection(135).angle).toBe('up-left');
-      expect(getDirection(225).angle).toBe('down-left');
-      expect(getDirection(315).angle).toBe('down-right');
+    it('should return correct 8 directions', () => {
+      expect(getCompassDirection(0)).toBe('e');
+      expect(getCompassDirection(45)).toBe('ne');
+      expect(getCompassDirection(90)).toBe('n');
+      expect(getCompassDirection(135)).toBe('nw');
+      expect(getCompassDirection(180)).toBe('w');
+      expect(getCompassDirection(225)).toBe('sw');
+      expect(getCompassDirection(270)).toBe('s');
+      expect(getCompassDirection(315)).toBe('se');
     });
 
-    it('should handle x and y directions separately', () => {
-      const result = getDirection(45);
-      expect(result.x).toBe('right');
-      expect(result.y).toBe('up');
+    it('should return empty string when force is below threshold', () => {
+      expect(getCompassDirection(45, 0.05, 0.1)).toBe('');
+      expect(getCompassDirection(90, 0.1, 0.1)).toBe('');
+    });
+
+    it('should return direction when force is above threshold', () => {
+      expect(getCompassDirection(45, 0.5, 0.1)).toBe('ne');
+      expect(getCompassDirection(90, 0.2, 0.1)).toBe('n');
+    });
+
+    it('should handle angles near sector boundaries', () => {
+      // 22.5° is boundary between e and ne - should round to ne
+      expect(getCompassDirection(22.5)).toBe('ne');
+      // 22° should still be e
+      expect(getCompassDirection(22)).toBe('e');
+    });
+
+    it('should handle negative angles', () => {
+      expect(getCompassDirection(-45)).toBe('se');
+      expect(getCompassDirection(-90)).toBe('s');
+    });
+
+    it('should handle angles > 360', () => {
+      expect(getCompassDirection(405)).toBe('ne'); // 405 % 360 = 45
+      expect(getCompassDirection(720)).toBe('e'); // 720 % 360 = 0
     });
   });
 });

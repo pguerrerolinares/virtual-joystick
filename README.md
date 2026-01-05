@@ -30,7 +30,7 @@ Touch joystick control with multiple modes and themes.
 ```html
 <virtual-joystick
   mode="static"
-  theme="pixel-art"
+  theme="modern"
   size="100"
   threshold="0.1"
   shape="circle"
@@ -42,13 +42,15 @@ Touch joystick control with multiple modes and themes.
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `mode` | `static` \| `semi` \| `dynamic` | `dynamic` | Joystick behavior mode |
-| `theme` | `modern` \| `pixel-art` \| `custom` | `modern` | Visual theme |
-| `size` | `number` | `100` | Size in pixels |
-| `threshold` | `number` | `0.1` | Deadzone (0-1) |
+| `theme` | `modern` \| `custom` | `modern` | Visual theme |
+| `size` | `number` | `100` | Size in pixels (validated: must be > 0) |
+| `threshold` | `number` | `0.1` | Deadzone 0-1 (validated: clamped to range) |
 | `shape` | `circle` \| `square` | `circle` | Boundary shape |
 | `lock-x` | `boolean` | `false` | Lock X axis |
 | `lock-y` | `boolean` | `false` | Lock Y axis |
 | `catch-distance` | `number` | `50` | Distance to catch joystick in semi mode |
+| `no-rest` | `boolean` | `false` | Keep nub position on release (don't return to center) |
+| `data-only` | `boolean` | `false` | No DOM rendering, events only |
 
 **Events:**
 
@@ -66,11 +68,7 @@ interface JoystickMoveData {
   force: number;  // 0 to 1
   distance: number;
   angle: { radian: number; degree: number };
-  direction: {
-    x: 'left' | 'right' | 'center';
-    y: 'up' | 'down' | 'center';
-    angle: 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right';
-  };
+  compass: 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | '';
   vector: { x: number; y: number };
   timestamp: number;
 }
@@ -78,60 +76,76 @@ interface JoystickMoveData {
 
 ### `<virtual-action-button>`
 
-Simple press/release button.
+Simple press/release button for game actions.
 
 ```html
-<virtual-action-button size="64" theme="modern"></virtual-action-button>
-```
-
-**Events:**
-
-- `button-press` - Button pressed
-- `button-release` - Button released (includes `duration`)
-
-### `<virtual-charge-button>`
-
-Hold to charge, release to activate.
-
-```html
-<virtual-charge-button
-  size="64"
-  charge-time="800"
-  show-percentage
-></virtual-charge-button>
+<virtual-action-button size="64" theme="modern">
+  <span>Jump</span>
+</virtual-action-button>
 ```
 
 **Attributes:**
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `charge-time` | `number` | `800` | Time to fully charge (ms) |
-| `show-percentage` | `boolean` | `false` | Show percentage text |
-| `min-charge` | `number` | `0` | Minimum charge to activate (0-100) |
+| `size` | `number` | `64` | Button size in pixels |
+| `theme` | `modern` \| `custom` | `modern` | Visual theme |
+| `icon` | `string` | `''` | Icon identifier |
 
 **Events:**
 
-- `charge-start` - Charging started
-- `charge-update` - Charge percentage updated
-- `charge-release` - Released (includes `percent`, `activated`)
+- `button-press` - Button pressed (includes `timestamp`)
+- `button-release` - Button released (includes `timestamp`, `duration`)
 
 ## Modes
 
-| Mode | Description |
-|------|-------------|
-| `static` | Fixed position, always visible |
-| `dynamic` | Appears at touch location, disappears on release |
-| `semi` | Stays at last position, can be "caught" if touch is within `catch-distance` |
+| Mode | Description | Positioning |
+|------|-------------|-------------|
+| `static` | Fixed position, always visible | `relative` |
+| `dynamic` | Appears at touch location, disappears on release | `fixed` (viewport) |
+| `semi` | Stays at last position, can be "caught" if touch is within `catch-distance` | `absolute` (scrolls with page) |
+
+## Dataset Polling (Alternative to Events)
+
+For game loops that prefer polling over events, the joystick exposes its state via `dataset` attributes:
+
+```javascript
+// Game loop approach - poll the joystick state
+function gameLoop() {
+  const joystick = document.querySelector('virtual-joystick');
+
+  // Read current state directly (no event listener needed)
+  const x = parseFloat(joystick.dataset.x);        // -1 to 1
+  const y = parseFloat(joystick.dataset.y);        // -1 to 1
+  const force = parseFloat(joystick.dataset.force); // 0 to 1
+  const compass = joystick.dataset.compass;        // 'n', 'ne', 'e', etc.
+  const degree = parseFloat(joystick.dataset.degree); // 0-360
+
+  // Track direction changes
+  const capture = joystick.dataset.capture;  // Newly activated directions
+  const release = joystick.dataset.release;  // Just released directions
+
+  requestAnimationFrame(gameLoop);
+}
+```
+
+**Dataset attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `data-x` | `string` | Normalized X position (-1 to 1) |
+| `data-y` | `string` | Normalized Y position (-1 to 1) |
+| `data-force` | `string` | Force magnitude (0 to 1) |
+| `data-compass` | `string` | Simple direction: `n`, `ne`, `e`, `se`, `s`, `sw`, `w`, `nw`, or empty |
+| `data-degree` | `string` | Angle in degrees (0-360) |
+| `data-capture` | `string` | Characters from compass that were just activated |
+| `data-release` | `string` | Characters from compass that were just released |
 
 ## Themes
 
 ### Modern (default)
 
 Clean CSS-based design with gradients and shadows.
-
-### Pixel Art
-
-Retro 8-bit style with SVG sprites.
 
 ### Custom
 
@@ -174,20 +188,36 @@ virtual-action-button {
 }
 ```
 
-### Charge Button
+## CSS Parts (Shadow DOM Styling)
+
+Style joystick internals from outside using `::part()`:
 
 ```css
-virtual-charge-button {
-  --vcb-size: 64px;
-  --vcb-color: #27ae60;
-  --vcb-bg: linear-gradient(...);
-  --vcb-border: 2px solid rgba(255, 255, 255, 0.4);
-  --vcb-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  --vcb-radius: 50%;
-  --vcb-ring-width: 4px;
-  --vcb-ring-track: rgba(255, 255, 255, 0.2);
+/* Style the container */
+virtual-joystick::part(container) {
+  filter: drop-shadow(0 0 10px blue);
+}
+
+/* Style the pad (base) */
+virtual-joystick::part(pad) {
+  background: radial-gradient(circle, #333, #111);
+  border: 3px solid gold;
+}
+
+/* Style the nub (handle) */
+virtual-joystick::part(nub) {
+  background: crimson;
+  box-shadow: 0 0 20px red;
 }
 ```
+
+**Available parts:**
+
+| Part | Description |
+|------|-------------|
+| `container` | The outer wrapper element |
+| `pad` | The circular/square base |
+| `nub` | The movable handle |
 
 ## Framework Integration
 
@@ -252,7 +282,7 @@ function onMove(e) {
 ### Angular
 
 ```typescript
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { registerAll } from 'virtual-joystick';
 
 @Component({
@@ -270,6 +300,21 @@ export class GameComponent implements OnInit {
   }
 }
 ```
+
+## Robustness Features
+
+Fixes for common issues found in similar libraries (nipplejs):
+
+| Feature | Description |
+|---------|-------------|
+| **CSS Transform Compensation** | Correct positioning even with scaled/rotated parents (with singular matrix protection) |
+| **Multi-touch Support** | Proper touch identifier tracking per instance with type prefixes |
+| **iOS Safari Fixes** | No zoom on long-press, no callout menu |
+| **Firefox Android Fixes** | No freeze with multiple joysticks |
+| **RAF Batching** | Low CPU usage during continuous movement |
+| **Visibility Change Handler** | Singleton handler auto-releases all inputs on tab switch/app background |
+| **Lazy Shadow DOM** | No DOM overhead in data-only mode |
+| **Input Validation** | Graceful fallback for invalid attribute values |
 
 ## Browser Support
 

@@ -2,7 +2,7 @@
  * Types for virtual-action-button component.
  */
 
-export type ActionButtonTheme = 'modern' | 'pixel-art' | 'custom';
+export type ActionButtonTheme = 'modern' | 'custom';
 
 export interface ActionButtonOptions {
   /** Visual theme (default: 'modern') */
